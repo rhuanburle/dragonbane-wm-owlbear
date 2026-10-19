@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "manifest_version": 1,
   "author": "Guilda dos Exploradores",
-  "description": "Mesa do West Marches no Owlbear: as fichas dos heróis vêm do hub (PV, PD, condições, armas) e o mapa da região é o mesmo de todos os mestres — o que o mestre carimba aqui vale lá.",
+  "description": "Mesa do West Marches: fichas dos heróis do hub (PV, PD, condições, armas) e o mapa da região de todos os mestres.",
   "icon": "/owlbear/icon.svg",
   "background_url": "/owlbear/background.html",
   "action": {
