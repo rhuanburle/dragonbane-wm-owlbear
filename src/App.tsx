@@ -3,7 +3,7 @@
 // o chamado da sessão, mexe em PV/PD, vincula tokens e carimba o mapa da região.
 import { useEffect, useState } from 'react'
 import OBR from '@owlbear-rodeo/sdk'
-import { PALETA, arteDaPeca, type PecaDaPaleta } from '../../src/data/mapa/paleta'
+import { CREDITO_DA_ARTE, GRUPOS, PALETA, arteDaPeca, type GrupoDaPaleta } from '../../src/data/mapa/paleta'
 import {
   FERRAMENTA_ID,
   HUB,
@@ -190,7 +190,7 @@ function Conexao({ onPronto }: { onPronto: () => void }) {
 function Paleta() {
   const [cenaPronta, setCenaPronta] = useState(false)
   const [ligado, setLigado] = useState(false)
-  const [aba, setAba] = useState<PecaDaPaleta['camada'] | 'texto'>('terreno')
+  const [aba, setAba] = useState<GrupoDaPaleta | 'texto'>('floresta')
   const [rot, setRot] = useState(0)
   const [texto, setTexto] = useState('')
   const [ferr, setFerr] = useState<FerramentaDoMapa | null>(guardado.ferramenta())
@@ -251,9 +251,9 @@ function Paleta() {
         </button>
       </div>
       <div className="abas">
-        {(['terreno', 'caminho', 'marco', 'texto'] as const).map((a) => (
-          <button key={a} className={aba === a ? 'on' : ''} onClick={() => setAba(a)}>
-            {{ terreno: 'Terreno', caminho: 'Estrada/rio', marco: 'Marcos', texto: 'Texto' }[a]}
+        {[...GRUPOS, { id: 'texto', nome: 'Texto' } as const].map((a) => (
+          <button key={a.id} className={aba === a.id ? 'on' : ''} onClick={() => setAba(a.id)}>
+            {a.nome}
           </button>
         ))}
       </div>
@@ -266,7 +266,7 @@ function Paleta() {
         </div>
       ) : (
         <div className="grade">
-          {PALETA.filter((p) => p.camada === aba).map((p) => {
+          {PALETA.filter((p) => p.grupo === aba).map((p) => {
             const on = ferr?.tipo === 'peca' && ferr.id === p.id
             return (
               <button key={p.id} className={`peca ${on ? 'on' : ''}`} title={p.nome} onClick={() => void escolher(on ? null : { tipo: 'peca', id: p.id, rot })}>
@@ -299,6 +299,7 @@ function Paleta() {
           ? 'Ferramenta “Carimbo do West Marches” ativa: clique nos hexes. Para apagar, use a borracha ou selecione o carimbo e aperte Delete.'
           : 'Escolha uma peça.'}
       </span>
+      <span className="muted">{CREDITO_DA_ARTE}</span>
       <button className="btn" onClick={() => void OBR.scene.setMetadata({ [META_MAPA_LIGADO]: false })}>
         Desligar o mapa nesta cena
       </button>
