@@ -5,6 +5,8 @@
 // o metadata). Ela mora só no localStorage do navegador do mestre — popover e
 // fundo são da mesma origem e enxergam o mesmo localStorage.
 
+import { PECA_POR_ID } from '../../src/data/mapa/paleta'
+
 export const NS = 'br.dragonbane-wm'
 /** Metadata da sala: o resumo da mesa que o fundo do mestre publica. */
 export const META_MESA = `${NS}/mesa`
@@ -55,7 +57,9 @@ export const guardado = {
   setCallId: (v: string | null) => gravar(LS.callId, v),
   ferramenta: (): FerramentaDoMapa | null => {
     try {
-      return JSON.parse(ler(LS.ferramenta) ?? 'null')
+      const f = JSON.parse(ler(LS.ferramenta) ?? 'null') as FerramentaDoMapa | null
+      // peça que saiu da paleta (a arte mudou): o servidor recusaria cada clique
+      return f?.tipo === 'peca' && !PECA_POR_ID[f.id] ? null : f
     } catch {
       return null
     }
