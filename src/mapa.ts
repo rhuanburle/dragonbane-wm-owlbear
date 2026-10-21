@@ -54,12 +54,16 @@ export interface Conversao {
   hub: Vector2
   obr: Vector2
   grade: GradeDoHub
+  /** zIndex logo acima das imagens do próprio mestre na camada MAP: o Owlbear dá
+   *  `Date.now()` de zIndex a quem não escolhe, então o fundo que o mestre subiu
+   *  para criar a cena cobria os hexes do hub. */
+  base: number
 }
 
 let conv: Conversao | null = null
 let cenaAtual: CenaDoHub | null = null
 
-async function montarConversao(cena: CenaDoHub, carimbos: CarimboDoHub[]): Promise<Conversao | null> {
+async function montarConversao(cena: CenaDoHub, carimbos: CarimboDoHub[], base: number): Promise<Conversao | null> {
   const { type, size } = cena.grade
   if (!size || type < 2) return null
   let ancora = cena.grade.ancora
@@ -74,7 +78,7 @@ async function montarConversao(cena: CenaDoHub, carimbos: CarimboDoHub[]): Promi
   }
   const m = await orientarGrade(type >= 4)
   if (!m) return null
-  return { k: m.passo / size, dpiCena: await OBR.scene.grid.getDpi(), hub: { x: ancora.cx, y: ancora.cy }, obr: m.c0, grade: cena.grade }
+  return { k: m.passo / size, dpiCena: await OBR.scene.grid.getDpi(), hub: { x: ancora.cx, y: ancora.cy }, obr: m.c0, grade: cena.grade, base }
 }
 
 /** Mede a grade hex do Owlbear em vez de confiar no nome do tipo: pede o centro
@@ -125,7 +129,7 @@ function imagem(c: Conversao, chave: string, assinatura: string, src: string, r:
     .layer('MAP')
     .locked(true)
     .disableHit(travarClique)
-    .zIndex(z)
+    .zIndex(c.base + z)
     .name('Mapa da região (hub)')
     .metadata({ [META_CARIMBO]: { id: chave, assinatura } })
     .build()
@@ -195,10 +199,12 @@ async function sincronizarAgora(forcar: boolean): Promise<void> {
   if (r.igual || !r.cena) return
   const cena = r.cena
   const carimbos = r.carimbos ?? []
-  const c = await montarConversao(cena, carimbos)
+  const doMestre = await OBR.scene.items.getItems((i) => i.layer === 'MAP' && !(META_CARIMBO in i.metadata))
+  const c = await montarConversao(cena, carimbos, doMestre.reduce((m, i) => Math.max(m, i.zIndex + 1), 0))
   if (!c) return
-  // Escala ou âncora mudaram (o mestre trocou o dpi da cena): redesenha tudo.
-  const redesenhar = !conv || conv.k !== c.k || conv.obr.x !== c.obr.x || conv.obr.y !== c.obr.y
+  // Escala ou âncora mudaram (o mestre trocou o dpi da cena), ou o mestre pôs
+  // outra imagem de mapa por cima: redesenha tudo.
+  const redesenhar = !conv || conv.k !== c.k || conv.obr.x !== c.obr.x || conv.obr.y !== c.obr.y || conv.base !== c.base
   conv = c
   cenaAtual = cena
 
