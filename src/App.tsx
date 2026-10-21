@@ -223,7 +223,20 @@ function Paleta() {
     return (
       <div className="card">
         <b>Mapa da região</b>
-        <span className="muted">Abra uma cena para usar o mapa da região.</span>
+        <span className="muted">
+          O Owlbear só cria cena a partir de uma imagem. O mapa é feito de carimbos, então qualquer fundo serve:
+        </span>
+        <ol className="muted" style={{ margin: 0, paddingLeft: '1.2em' }}>
+          <li>
+            Baixe o{' '}
+            <a href={`${HUB}/mapa/fundo-owlbear.png`} target="_blank" rel="noreferrer">
+              fundo liso
+            </a>{' '}
+            (botão direito › salvar imagem).
+          </li>
+          <li>No Owlbear, abra Cenas (canto de cima, à esquerda) › + › envie o fundo e crie a cena.</li>
+          <li>Abra a cena e volte a esta aba.</li>
+        </ol>
       </div>
     )
 

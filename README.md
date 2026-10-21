@@ -59,7 +59,7 @@ A chave fica guardada **só no seu navegador**. Ela nunca vai para a sala, que o
 
 ## Mapa da região
 
-1. Crie (ou abra) uma **cena só para o mapa**.
+1. Crie (ou abra) uma **cena só para o mapa**. O Owlbear só cria cena a partir de uma imagem: use o [fundo liso](https://dragonbane-west-marches.web.app/mapa/fundo-owlbear.png) (Cenas › **+** › envie a imagem). O mapa é feito de carimbos, então o fundo é só o papel.
 2. No ícone da extensão → aba **Mapa** → **"Usar esta cena como mapa da região"**. A grade vira hex e os carimbos do hub aparecem.
 3. Para carimbar: escolha uma peça (terreno, caminho, marco ou texto) na aba Mapa. Depois use a ferramenta **"Carimbo do West Marches"** na barra da esquerda (atalho **W**) e clique nos hexes.
    - **⟲ ⟳** giram a peça (estradas e rios).
