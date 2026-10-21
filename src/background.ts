@@ -7,6 +7,8 @@ import { FERRAMENTA_ID, META_CARIMBO, META_MAPA_LIGADO, MODO_ID, guardado, mesa 
 import { sincronizarFichas } from './fichas'
 import { hexNoPonto, mapaLigado, sincronizarMapa, vigiarApagados } from './mapa'
 
+declare const __BUILD__: string
+
 const ICONE = `${location.origin}${import.meta.env.BASE_URL}icon.svg`
 const FICHAS_MS = 5_000
 const MAPA_MS = 10_000
@@ -67,6 +69,7 @@ async function registrarFerramenta() {
 }
 
 OBR.onReady(async () => {
+  console.info(`[West Marches] extensão de ${__BUILD__}`)
   await registrarFerramenta()
   vigiarApagados()
   void ciclo('fichas')

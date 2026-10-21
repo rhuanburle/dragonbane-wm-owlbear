@@ -14,6 +14,9 @@ export default defineConfig({
   root: aqui('.'),
   base: '/owlbear/',
   plugins: [react()],
+  // carimbo do build: o fundo anuncia no console qual versão está rodando (o
+  // navegador pode segurar uma cópia antiga da extensão em cache)
+  define: { __BUILD__: JSON.stringify(new Date().toISOString().slice(0, 16)) },
   build: {
     outDir: aqui('../dist/owlbear'),
     emptyOutDir: true,

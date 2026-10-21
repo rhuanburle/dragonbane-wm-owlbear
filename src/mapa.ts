@@ -128,7 +128,10 @@ function medirImagem(src: string): Promise<void> {
       if (img.naturalWidth && img.naturalHeight) tamanhos.set(src, { w: img.naturalWidth, h: img.naturalHeight })
       ok()
     }
-    img.onerror = () => ok()
+    img.onerror = () => {
+      console.warn('[West Marches] não deu para medir a imagem', src)
+      ok()
+    }
     img.src = src
   })
 }
