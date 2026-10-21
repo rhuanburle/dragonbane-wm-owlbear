@@ -117,13 +117,16 @@ function mimeDe(url: string): string {
 }
 
 /** Uma imagem do hub posicionada por retângulo (coordenadas da cena do hub). A
- *  imagem "mede" w×h×10 pixels, e o dpi dela é escolhido para 10 px da imagem
+ *  imagem "mede" w×h×esc pixels, e o dpi dela é escolhido para esc px da imagem
  *  valerem 1 unidade do hub (= k unidades do Owlbear): ela ocupa no Owlbear
- *  exatamente o retângulo que ocupa no hub, qualquer que seja o arquivo. */
+ *  exatamente o retângulo que ocupa no hub, qualquer que seja o arquivo. O esc
+ *  é 10, menos no fundo (2000 unidades): 20000 px passa do limite de textura da
+ *  placa de vídeo (16384 ou menos) e a imagem não desenhava. */
 function imagem(c: Conversao, chave: string, assinatura: string, src: string, r: { x: number; y: number; w: number; h: number }, rot: number, z: number, travarClique = false): Item {
-  const W = Math.max(1, Math.round(r.w * 10))
-  const H = Math.max(1, Math.round(r.h * 10))
-  return buildImage({ url: src, width: W, height: H, mime: mimeDe(src) }, { dpi: (10 * c.dpiCena) / c.k, offset: { x: W / 2, y: H / 2 } })
+  const esc = Math.min(10, 4096 / Math.max(r.w, r.h))
+  const W = Math.max(1, Math.round(r.w * esc))
+  const H = Math.max(1, Math.round(r.h * esc))
+  return buildImage({ url: src, width: W, height: H, mime: mimeDe(src) }, { dpi: (esc * c.dpiCena) / c.k, offset: { x: W / 2, y: H / 2 } })
     .position(paraObr(c, { x: r.x + r.w / 2, y: r.y + r.h / 2 }))
     .rotation(rot)
     .layer('MAP')
@@ -223,6 +226,10 @@ async function sincronizarAgora(forcar: boolean): Promise<void> {
   if (sair.length) await OBR.scene.items.deleteItems(sair)
   if (entrar.length) await OBR.scene.items.addItems(entrar)
   versaoAtual = r.versao
+  const naCena = await OBR.scene.items.getItems((i) => META_CARIMBO in i.metadata)
+  guardado.setMapaStatus(
+    `${naCena.length} de ${quero.size} peças do hub na cena (${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}).`,
+  )
 }
 
 /** O mestre apagou um carimbo no Owlbear (Delete): apaga no hub também. Troca de

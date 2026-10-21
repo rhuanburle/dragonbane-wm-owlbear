@@ -32,6 +32,7 @@ const LS = {
   callId: 'wm.callId',
   ferramenta: 'wm.ferramenta',
   recarregar: 'wm.recarregar',
+  mapaStatus: 'wm.mapaStatus',
 }
 
 const ler = (k: string) => {
@@ -68,6 +69,10 @@ export const guardado = {
   /** O popover pede ao fundo para buscar agora (sem esperar o próximo ciclo). */
   pedirRecarga: () => gravar(LS.recarregar, String(Date.now())),
   chaveRecarga: LS.recarregar,
+  /** O que o fundo conseguiu desenhar do mapa (ou o erro), para o popover mostrar. */
+  mapaStatus: () => ler(LS.mapaStatus),
+  setMapaStatus: (v: string) => gravar(LS.mapaStatus, v),
+  chaveMapaStatus: LS.mapaStatus,
 }
 
 export type FerramentaDoMapa =

@@ -194,6 +194,13 @@ function Paleta() {
   const [rot, setRot] = useState(0)
   const [texto, setTexto] = useState('')
   const [ferr, setFerr] = useState<FerramentaDoMapa | null>(guardado.ferramenta())
+  const [status, setStatus] = useState(guardado.mapaStatus())
+
+  useEffect(() => {
+    const ouvir = (e: StorageEvent) => e.key === guardado.chaveMapaStatus && setStatus(e.newValue)
+    window.addEventListener('storage', ouvir)
+    return () => window.removeEventListener('storage', ouvir)
+  }, [])
 
   useEffect(() => {
     let pararMeta = () => {}
@@ -312,6 +319,7 @@ function Paleta() {
           ? 'Ferramenta “Carimbo do West Marches” ativa: clique nos hexes. Para apagar, use a borracha ou selecione o carimbo e aperte Delete.'
           : 'Escolha uma peça.'}
       </span>
+      {status && <span className="muted">{status}</span>}
       <span className="muted">{CREDITO_DA_ARTE}</span>
       <button className="btn" onClick={() => void OBR.scene.setMetadata({ [META_MAPA_LIGADO]: false })}>
         Desligar o mapa nesta cena

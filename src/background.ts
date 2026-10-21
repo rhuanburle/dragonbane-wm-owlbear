@@ -24,6 +24,7 @@ async function ciclo(oque: 'fichas' | 'mapa', forcar = false) {
     else await sincronizarMapa(forcar)
   } catch (e) {
     console.warn(`[West Marches] ${oque}:`, e)
+    if (oque === 'mapa') guardado.setMapaStatus(`Erro ao desenhar o mapa: ${e instanceof Error ? e.message : JSON.stringify(e)}`)
   }
 }
 
