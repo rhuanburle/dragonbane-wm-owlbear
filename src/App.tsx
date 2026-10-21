@@ -234,7 +234,7 @@ function Paleta() {
             </a>{' '}
             (botão direito › salvar imagem).
           </li>
-          <li>No Owlbear, abra Cenas (canto de cima, à esquerda) › + › envie o fundo e crie a cena.</li>
+          <li>Abra o Asset Manager (último ícone da barra de baixo), envie o fundo e crie a cena com ele.</li>
           <li>Abra a cena e volte a esta aba.</li>
         </ol>
       </div>
