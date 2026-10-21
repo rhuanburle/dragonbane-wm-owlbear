@@ -181,7 +181,7 @@ function Conexao({ onPronto }: { onPronto: () => void }) {
           </select>
         </div>
       )}
-      {chamados && !chamados.length && <span className="muted">Nenhuma missão confirmada sua agora.</span>}
+      {chamados && !chamados.length && <span className="muted">Nenhuma missão confirmada sua agora. O mapa funciona mesmo assim: aba Mapa.</span>}
       {erro && <span className="erro">{erro}</span>}
     </div>
   )

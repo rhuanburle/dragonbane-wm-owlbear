@@ -3,7 +3,7 @@
 // um como uma imagem travada na camada MAP. O mestre carimba pela ferramenta
 // "Carimbo WM" e apaga selecionando o carimbo e apertando Delete — as duas coisas
 // vão para o hub e valem para todos os mestres e VTTs.
-import OBR, { buildImage, buildText, type Item, type Vector2 } from '@owlbear-rodeo/sdk'
+import OBR, { buildImage, buildShape, buildText, type Item, type Shape, type Vector2 } from '@owlbear-rodeo/sdk'
 import { hexGeom } from '../../src/lib/hexgrid'
 import type { MapScene } from '../../src/data/types'
 import { ORDEM_DA_CAMADA, encaixarNoHex } from '../../src/data/mapa/paleta'
@@ -297,4 +297,41 @@ export function hexNoPonto(p: Vector2): string | null {
   const h = paraHub(conv, p)
   if (h.x < 0 || h.y < 0 || h.x > cenaAtual.largura || h.y > cenaAtual.altura) return null
   return encaixarNoHex(conv.grade.type, conv.grade.size, { cx: conv.hub.x, cy: conv.hub.y }, h.x, h.y)
+}
+
+/** Clique de carimbo esperando o hub: um círculo pulsando no hex, só na tela
+ *  deste mestre (item local), até a cena redesenhar. Devolve quem o tira. */
+export async function marcarPendente(hexKey: string, apagando: boolean): Promise<() => Promise<void>> {
+  const [x, y] = hexKey.split('|').map(Number)
+  if (!conv || !Number.isFinite(x) || !Number.isFinite(y)) return async () => undefined
+  const d = conv.grade.size * conv.k * 0.8
+  const cor = apagando ? '#e2664a' : '#cba25a'
+  const item = buildShape()
+    .shapeType('CIRCLE')
+    .width(d)
+    .height(d)
+    .position(paraObr(conv, { x, y }))
+    .strokeColor(cor)
+    .strokeWidth(Math.max(2, d / 12))
+    .strokeDash(apagando ? [d / 10, d / 14] : [])
+    .fillColor(cor)
+    .fillOpacity(0.3)
+    .layer('DRAWING')
+    .locked(true)
+    .disableHit(true)
+    .build()
+  await OBR.scene.local.addItems([item])
+  let aceso = true
+  const pulso = setInterval(() => {
+    aceso = !aceso
+    void OBR.scene.local
+      .updateItems<Shape>([item.id], ([s]) => {
+        if (s) s.style.fillOpacity = aceso ? 0.3 : 0.08
+      })
+      .catch(() => undefined)
+  }, 450)
+  return async () => {
+    clearInterval(pulso)
+    await OBR.scene.local.deleteItems([item.id]).catch(() => undefined)
+  }
 }

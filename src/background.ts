@@ -5,7 +5,7 @@
 import OBR from '@owlbear-rodeo/sdk'
 import { FERRAMENTA_ID, META_CARIMBO, META_MAPA_LIGADO, MODO_ID, guardado, mesa } from './comum'
 import { sincronizarFichas } from './fichas'
-import { hexNoPonto, mapaLigado, sincronizarMapa, vigiarApagados } from './mapa'
+import { hexNoPonto, mapaLigado, marcarPendente, sincronizarMapa, vigiarApagados } from './mapa'
 
 declare const __BUILD__: string
 
@@ -47,10 +47,13 @@ async function registrarFerramenta() {
         await OBR.notification.show('Abra o West Marches, ligue o mapa nesta cena e escolha uma peça.', 'WARNING')
         return
       }
+      let tirar: (() => Promise<void>) | undefined
       try {
         if (f.tipo === 'borracha') {
           const meta = ev.target?.metadata?.[META_CARIMBO] as { id?: string } | undefined
           if (!meta?.id || meta.id === 'fundo' || meta.id.startsWith('foundry:')) return
+          const hexKey = hexNoPonto(ev.pointerPosition)
+          if (hexKey) tirar = await marcarPendente(hexKey, true)
           await mesa('apagarCarimbo', { id: meta.id })
         } else {
           const hexKey = hexNoPonto(ev.pointerPosition)
@@ -58,11 +61,14 @@ async function registrarFerramenta() {
             await OBR.notification.show('Fora do mapa da região — ou o mapa ainda está carregando nesta cena.', 'WARNING')
             return
           }
+          tirar = await marcarPendente(hexKey, false)
           await mesa('carimbar', f.tipo === 'peca' ? { hexKey, peca: f.id, rot: f.rot } : { hexKey, texto: f.texto })
         }
         await sincronizarMapa(true)
       } catch (e) {
         await OBR.notification.show(e instanceof Error ? e.message : 'Não deu para carimbar.', 'ERROR')
+      } finally {
+        await tirar?.()
       }
     },
   })
