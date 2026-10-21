@@ -116,18 +116,31 @@ function mimeDe(url: string): string {
   return ext === 'svg' ? 'image/svg+xml' : ext === 'webp' ? 'image/webp' : ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 'image/png'
 }
 
-/** Uma imagem do hub posicionada por retângulo (coordenadas da cena do hub). A
- *  imagem "mede" w×h×esc pixels, e o dpi dela é escolhido para esc px da imagem
- *  valerem 1 unidade do hub (= k unidades do Owlbear): ela ocupa no Owlbear
- *  exatamente o retângulo que ocupa no hub, qualquer que seja o arquivo. O esc
- *  é 10, menos no fundo (2000 unidades): 20000 px passa do limite de textura da
- *  placa de vídeo (16384 ou menos) e a imagem não desenhava. */
+/** Tamanho real de cada arquivo: o Owlbear exige que width/height do item sejam
+ *  os pixels da imagem ("content width 420 does not match image width 222") e,
+ *  se não forem, não desenha direito. */
+const tamanhos = new Map<string, { w: number; h: number }>()
+function medirImagem(src: string): Promise<void> {
+  if (tamanhos.has(src)) return Promise.resolve()
+  return new Promise((ok) => {
+    const img = new Image()
+    img.onload = () => {
+      if (img.naturalWidth && img.naturalHeight) tamanhos.set(src, { w: img.naturalWidth, h: img.naturalHeight })
+      ok()
+    }
+    img.onerror = () => ok()
+    img.src = src
+  })
+}
+
+/** Uma imagem do hub posicionada por retângulo (coordenadas da cena do hub): o
+ *  dpi faz a largura do arquivo valer r.w unidades do hub (= r.w·k do Owlbear),
+ *  e a escala em y acerta a altura quando a proporção do arquivo é outra. */
 function imagem(c: Conversao, chave: string, assinatura: string, src: string, r: { x: number; y: number; w: number; h: number }, rot: number, z: number, travarClique = false): Item {
-  const esc = Math.min(10, 4096 / Math.max(r.w, r.h))
-  const W = Math.max(1, Math.round(r.w * esc))
-  const H = Math.max(1, Math.round(r.h * esc))
-  return buildImage({ url: src, width: W, height: H, mime: mimeDe(src) }, { dpi: (esc * c.dpiCena) / c.k, offset: { x: W / 2, y: H / 2 } })
+  const { w: W, h: H } = tamanhos.get(src) ?? { w: Math.round(r.w * 10), h: Math.round(r.h * 10) }
+  return buildImage({ url: src, width: W, height: H, mime: mimeDe(src) }, { dpi: (W * c.dpiCena) / (r.w * c.k), offset: { x: W / 2, y: H / 2 } })
     .position(paraObr(c, { x: r.x + r.w / 2, y: r.y + r.h / 2 }))
+    .scale({ x: 1, y: r.h / r.w / (H / W) })
     .rotation(rot)
     .layer('MAP')
     .locked(true)
@@ -138,17 +151,17 @@ function imagem(c: Conversao, chave: string, assinatura: string, src: string, r:
     .build()
 }
 
-function desejados(c: Conversao, cena: CenaDoHub, carimbos: CarimboDoHub[]): Map<string, { assinatura: string; item: () => Item }> {
-  const m = new Map<string, { assinatura: string; item: () => Item }>()
+function desejados(c: Conversao, cena: CenaDoHub, carimbos: CarimboDoHub[]): Map<string, { assinatura: string; src?: string; item: () => Item }> {
+  const m = new Map<string, { assinatura: string; src?: string; item: () => Item }>()
   if (cena.fundo.src) {
     const src = cena.fundo.src
     const r = { x: 0, y: 0, w: cena.largura, h: cena.altura }
-    m.set('fundo', { assinatura: `${src}|${r.w}|${r.h}`, item: () => imagem(c, 'fundo', `${src}|${r.w}|${r.h}`, src, r, 0, 0, true) })
+    m.set('fundo', { assinatura: `${src}|${r.w}|${r.h}`, src, item: () => imagem(c, 'fundo', `${src}|${r.w}|${r.h}`, src, r, 0, 0, true) })
   }
   cena.pecasDoFoundry.forEach((t, i) => {
     const chave = `foundry:${i}`
     const ass = `${t.src}|${t.x}|${t.y}|${t.w}|${t.h}|${t.rot}`
-    m.set(chave, { assinatura: ass, item: () => imagem(c, chave, ass, t.src, t, t.rot, 1 + (t.sort ?? 0)) })
+    m.set(chave, { assinatura: ass, src: t.src, item: () => imagem(c, chave, ass, t.src, t, t.rot, 1 + (t.sort ?? 0)) })
   })
   const ordem = [...carimbos].sort((a, b) => ORDEM_DA_CAMADA[a.camada] - ORDEM_DA_CAMADA[b.camada] || a.criadoEm - b.criadoEm)
   ordem.forEach((s, i) => {
@@ -175,7 +188,7 @@ function desejados(c: Conversao, cena: CenaDoHub, carimbos: CarimboDoHub[]): Map
             .metadata({ [META_CARIMBO]: { id: s.id, assinatura: ass } })
             .build(),
       })
-    } else if (s.src) m.set(s.id, { assinatura: ass, item: () => imagem(c, s.id, ass, s.src!, s, s.rot, z) })
+    } else if (s.src) m.set(s.id, { assinatura: ass, src: s.src, item: () => imagem(c, s.id, ass, s.src!, s, s.rot, z) })
   })
   return m
 }
@@ -221,7 +234,9 @@ async function sincronizarAgora(forcar: boolean): Promise<void> {
     if (redesenhar || !alvo || alvo.assinatura !== meta.assinatura || tem.has(meta.id!)) sair.push(it.id)
     else tem.set(meta.id!, it.id)
   }
-  const entrar = [...quero.entries()].filter(([id]) => !tem.has(id)).map(([, d]) => d.item())
+  const faltam = [...quero.entries()].filter(([id]) => !tem.has(id))
+  await Promise.all(faltam.map(([, d]) => d.src && medirImagem(d.src)))
+  const entrar = faltam.map(([, d]) => d.item())
   sair.forEach((id) => apagandoNos.add(id))
   if (sair.length) await OBR.scene.items.deleteItems(sair)
   if (entrar.length) await OBR.scene.items.addItems(entrar)
