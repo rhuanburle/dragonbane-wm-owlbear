@@ -1,7 +1,7 @@
 // Telas do popover da extensão. Jogador: vê a mesa (PV, PD, condições, armas) que o mestre
 // publica na sala e abre a ficha completa no hub. Mestre: conecta a chave, escolhe
 // o chamado da sessão, mexe em PV/PD, vincula tokens e carimba o mapa da região.
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import OBR from '@owlbear-rodeo/sdk'
 import { CREDITO_DA_ARTE, GRUPOS, PALETA, arteDaPeca, type GrupoDaPaleta } from '../../src/data/mapa/paleta'
 import {
@@ -61,17 +61,74 @@ function Barra({ rotulo, v, onMudar }: { rotulo: string; v: [number, number]; on
   )
 }
 
+/** Quanto esperar por mais cliques de PV/PD antes de mandar a soma. */
+const JUNTAR_MS = 400
+/** Diferença já confirmada sai da tela mesmo sem resumo novo. */
+const SOLTAR_MS = 4000
+
 function Heroi({ h, mestre, callId, onErro }: { h: ResumoDoHeroi; mestre: boolean; callId: string; onErro: (m: string) => void }) {
   const editar = mestre && h.editavel
-  async function mudar(campo: 'pv' | 'pd', d: number) {
-    try {
-      // A diferença, não o valor: o resumo pode estar segundos atrás do hub.
-      await mesa('pvpd', { callId, charId: h.id, [`d${campo}`]: d })
-      guardado.pedirRecarga()
-    } catch (e) {
-      onErro(e instanceof Error ? e.message : 'Não deu.')
+  // Clique aparece NA HORA: a diferença ainda não confirmada fica por cima do
+  // resumo. Cliques seguidos viram um envio só (−1 −1 −1 → −3), e a diferença
+  // sai da tela quando o resumo novo (já com ela) chega do hub.
+  const [local, setLocal] = useState({ pv: 0, pd: 0 })
+  const juntando = useRef<Partial<Record<'pv' | 'pd', { d: number; timer: ReturnType<typeof setTimeout> }>>>({})
+  const emVoo = useRef({ pv: 0, pd: 0 })
+  /** Já gravado no hub e ainda somado em `local`, à espera do resumo novo. */
+  const confirmado = useRef({ pv: 0, pd: 0 })
+  const fila = useRef<Promise<unknown>>(Promise.resolve())
+
+  // Resumo novo: o que já foi confirmado está nele, então sai de `local`; o que
+  // ainda está juntando ou em voo continua por cima.
+  const [pvHub, pdHub] = [h.pv[0], h.pd[0]]
+  useEffect(() => {
+    const c = confirmado.current
+    confirmado.current = { pv: 0, pd: 0 }
+    setLocal((l) => ({ pv: l.pv - c.pv, pd: l.pd - c.pd }))
+  }, [pvHub, pdHub])
+
+  function mandar(campo: 'pv' | 'pd', d: number) {
+    emVoo.current[campo] += 1
+    fila.current = fila.current.then(async () => {
+      try {
+        // A diferença, não o valor: o resumo pode estar segundos atrás do hub.
+        await mesa('pvpd', { callId, charId: h.id, [`d${campo}`]: d })
+        confirmado.current[campo] += d
+        guardado.pedirRecarga()
+      } catch (e) {
+        setLocal((l) => ({ ...l, [campo]: l[campo] - d }))
+        onErro(e instanceof Error ? e.message : 'Não deu.')
+      } finally {
+        emVoo.current[campo] -= 1
+        // Rede de segurança: se o resumo não mudou de número (outro dano no
+        // hub anulou este), a diferença sai mesmo assim.
+        setTimeout(() => {
+          if (emVoo.current[campo] || juntando.current[campo]) return
+          confirmado.current[campo] = 0
+          setLocal((l) => ({ ...l, [campo]: 0 }))
+        }, SOLTAR_MS)
+      }
+    })
+  }
+
+  function mudar(campo: 'pv' | 'pd', d: number) {
+    onErro('')
+    setLocal((l) => ({ ...l, [campo]: l[campo] + d }))
+    const j = juntando.current[campo]
+    if (j) clearTimeout(j.timer)
+    const soma = (j?.d ?? 0) + d
+    juntando.current[campo] = {
+      d: soma,
+      timer: setTimeout(() => {
+        delete juntando.current[campo]
+        if (soma) mandar(campo, soma)
+      }, JUNTAR_MS),
     }
   }
+
+  const barra = (v: [number, number], d: number): [number, number] => [Math.min(v[1], Math.max(0, v[0] + d)), v[1]]
+  const pv = barra(h.pv, local.pv)
+  const pd = barra(h.pd, local.pd)
   return (
     <div className="card">
       <div className="row">
@@ -82,8 +139,8 @@ function Heroi({ h, mestre, callId, onErro }: { h: ResumoDoHeroi; mestre: boolea
         </a>
       </div>
       <div className="row">
-        <Barra rotulo="PV" v={h.pv} onMudar={editar ? (d) => void mudar('pv', d) : undefined} />
-        <Barra rotulo="PD" v={h.pd} onMudar={editar ? (d) => void mudar('pd', d) : undefined} />
+        <Barra rotulo="PV" v={pv} onMudar={editar ? (d) => void mudar('pv', d) : undefined} />
+        <Barra rotulo="PD" v={pd} onMudar={editar ? (d) => void mudar('pd', d) : undefined} />
         {h.marcas > 0 && <span className="muted">✦ {h.marcas}</span>}
       </div>
       {h.condicoes.length > 0 && (

@@ -10,7 +10,7 @@ import { hexNoPonto, mapaLigado, marcarPendente, sincronizarMapa, vigiarApagados
 declare const __BUILD__: string
 
 const ICONE = `${location.origin}${import.meta.env.BASE_URL}icon.svg`
-const FICHAS_MS = 5_000
+const FICHAS_MS = 3_000
 const MAPA_MS = 10_000
 
 async function souMestre(): Promise<boolean> {
